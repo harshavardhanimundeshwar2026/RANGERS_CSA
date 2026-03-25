@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+openai-whisper
+gTTS
+streamlit-mic-recorder
