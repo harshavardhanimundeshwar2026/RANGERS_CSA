@@ -187,10 +187,8 @@ else:
     if scores:
         st.plotly_chart(px.line_polar(pd.DataFrame(scores), r='Score', theta='Category', line_close=True, range_r=[0,10]))
 
-   if st.button("🚀 Push Data to Coaching Staff", use_container_width=True):
+    if st.button("🚀 Push Data to Coaching Staff", use_container_width=True):
         # 1. Create the payload for Airtable
-        # The key (left) MUST match your Airtable Column Name exactly.
-        # The value (right) pulls from your Streamlit session state.
         fields = {
             "Full Name": st.session_state.profile['name'],
             "Email": st.session_state.profile['email'],
@@ -262,7 +260,7 @@ else:
             "REFLECTION_Growth_Opportunity": st.session_state.all_reasons.get(rangers_groups["REFLECTION"][1], "")
         }
 
-        # 2. Airtable API Configuration (Pulling from SECRETS for safety)
+        # 2. Airtable API Configuration
         try:
             AIR_TOKEN = st.secrets["AIR_TOKEN"]
             BASE_ID = st.secrets["BASE_ID"]
@@ -284,8 +282,3 @@ else:
                     st.error(f"Sync Failed: {response.text}")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
-                
-            except Exception as e:
-                st.error(f"Connection Error: {e}")
-
-        
