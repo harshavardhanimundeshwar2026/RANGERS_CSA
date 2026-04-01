@@ -7,7 +7,6 @@ import plotly.express as px
 from datetime import datetime, date
 from gtts import gTTS
 from streamlit_mic_recorder import mic_recorder
-from streamlit_gsheets import GSheetsConnection  # NEW: Added for Google Sheets
 
 # --- 1. INITIALIZATION & PATHING ---
 @st.cache_resource
@@ -15,10 +14,6 @@ def load_whisper():
     return whisper.load_model("base")
 
 model = load_whisper()
-
-# --- PUBLIC GOOGLE SHEET CONFIG ---
-# Replace the URL below with your actual Public Google Sheet URL
-SHEET_URL = "https://docs.google.com/spreadsheets/d/13CMB8sQepO4z24a5oT9ZggnG9SxtGaIcTxWKabSe2ew/edit?usp=sharing"
 
 # --- RANGERS CATEGORIES ---
 rangers_groups = {
@@ -206,29 +201,12 @@ else:
         fig = px.line_polar(df_plot, r='Score', theta='Category', line_close=True, range_r=[0,10])
         fig.update_traces(fill='toself')
         st.plotly_chart(fig)
-        
 
-    if st.button("Submit Final Data to Google Sheets", use_container_width=True):
-        try:
-            # 1. Establish Connection
-            conn = st.connection("gsheets", type=GSheetsConnection)
-            
-            # 2. Read existing data to find the end of the sheet
-            existing_df = conn.read(spreadsheet=SHEET_URL, ttl=0)
-            
-            # 3. Create the flat row for this athlete
-            flat_entry = {**st.session_state.profile, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-            
-            # Iterate through all questions in order to match your header row
-            for i, (q, rat) in enumerate(st.session_state.all_ratings.items()):
-                flat_entry[f"q{i+1}_rat"] = rat
-                flat_entry[f"q{i+1}_res"] = st.session_state.all_reasons.get(q, "")
-            
-            # 4. Append and Update
-            new_df = pd.concat([existing_df, pd.DataFrame([flat_entry])], ignore_index=True)
-            conn.update(spreadsheet=SHEET_URL, data=new_df)
-            
-            st.success("✅ Data synced successfully to the Cloud!")
-            st.balloons()
-        except Exception as e:
-            st.error(f"Error saving to Google Sheets: {e}")
+    st.divider()
+    st.subheader("Final Step: Save to Team Dashboard")
+    st.write("Click the button below to synchronize your results with the Oakville Rangers database.")
+
+    # Airtable Submission Link
+    airtable_url = "https://airtable.com/invite/l?inviteId=invMxk61zgxvoXS1r&inviteToken=a1e05000257aaa6eaeeaf19454429377ceee59de58f57b0faee31175b1f68bda&utm_medium=email&utm_source=product_team&utm_content=transactional-alerts"
+
+    st.link_button("🚀 Submit to RANGERS Dashboard", airtable_url, use_container_width=True)
