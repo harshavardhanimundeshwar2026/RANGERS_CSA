@@ -187,7 +187,7 @@ else:
     if scores:
         st.plotly_chart(px.line_polar(pd.DataFrame(scores), r='Score', theta='Category', line_close=True, range_r=[0,10]))
 
-   if st.button("🚀 Submit Data to Coaching Staff", use_container_width=True):
+   if st.button("🚀 Push Data to Coaching Staff", use_container_width=True):
         # 1. Create the payload for Airtable
         # The key (left) MUST match your Airtable Column Name exactly.
         # The value (right) pulls from your Streamlit session state.
