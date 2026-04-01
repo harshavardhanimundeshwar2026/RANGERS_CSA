@@ -4,18 +4,20 @@ import os
 import base64
 import whisper
 import plotly.express as px
+import requests
 from datetime import datetime, date
 from gtts import gTTS
 from streamlit_mic_recorder import mic_recorder
 
-# --- 1. INITIALIZATION & PATHING ---
+# --- 1. INITIALIZATION & WHISPER MODEL ---
 @st.cache_resource
 def load_whisper():
+    # Using 'base' for a good balance of speed and accuracy
     return whisper.load_model("base")
 
 model = load_whisper()
 
-# --- RANGERS CATEGORIES ---
+# --- RANGERS CATEGORIES & QUESTIONS ---
 rangers_groups = {
     "RESPECT": [
         "I listen carefully to feedback from coaches and teammates.",
@@ -61,6 +63,7 @@ rangers_groups = {
 
 category_list = list(rangers_groups.keys())
 
+# --- HELPER FUNCTIONS ---
 def speak(text):
     try:
         tts = gTTS(text=text, lang='en')
@@ -82,7 +85,7 @@ def safe_transcribe(audio_bytes):
         st.error(f"Whisper Error: {e}")
         return None
 
-# --- 2. SESSION STATE ---
+# --- 2. SESSION STATE MANAGEMENT ---
 if 'group_index' not in st.session_state:
     st.session_state.update({
         'group_index': 0,
@@ -97,7 +100,7 @@ st.set_page_config(page_title="CSA Sport Performance", layout="wide")
 st.title("🎙️ RANGERS Standard Evaluation Survey")
 st.caption("Powered by CSA Sport Performance")
 
-# --- 3. HOMEPAGE ---
+# --- 3. HOMEPAGE & ATHLETE PROFILE ---
 if not st.session_state.intro_done:
     st.write("### 📝 Athlete Profile Setup")
     col1, col2 = st.columns(2)
@@ -120,12 +123,12 @@ if not st.session_state.intro_done:
                 "competition_level": comp_level, "age_league": age_league
             }
             st.session_state.intro_done = True
-            speak(f"Hello {name}. Let's begin.")
+            speak(f"Hello {name}. Let's begin the RANGERS assessment.")
             st.rerun()
         else:
-            st.warning("Please enter your Name and Email.")
+            st.warning("Please enter your Name and Email to proceed.")
 
-# --- 4. SURVEY LOGIC ---
+# --- 4. SURVEY CORE LOGIC ---
 elif not st.session_state.survey_complete:
     current_cat = category_list[st.session_state.group_index]
     questions = rangers_groups[current_cat]
@@ -133,17 +136,15 @@ elif not st.session_state.survey_complete:
     st.subheader(f"Section: {current_cat}")
     st.progress((st.session_state.group_index + 1) / len(category_list))
 
-    is_reflection = current_cat in ["REFLECTION"]
+    is_reflection = (current_cat == "REFLECTION")
     section_answered = True
 
     for i, q in enumerate(questions):
         st.write(f"---")
         st.write(f"**{i+1}. {q}**")
         
-        is_rating_q = not is_reflection 
-
-        # RATING
-        if is_rating_q:
+        # 4a. Rating Logic
+        if not is_reflection:
             if st.session_state.survey_mode == "Voice Mode":
                 aud_rat = mic_recorder(start_prompt="⏺️ Record Rating (1-10)", stop_prompt="⏹️ Stop", key=f"r_v_{current_cat}_{i}")
                 trans_rat = safe_transcribe(aud_rat['bytes'] if aud_rat else None)
@@ -152,7 +153,7 @@ elif not st.session_state.survey_complete:
                     val = num_map.get(trans_rat, trans_rat)
                     if val.isdigit() and 1 <= int(val) <= 10:
                         st.session_state.all_ratings[q] = val
-                        st.success(f"Rating: {val}")
+                        st.success(f"Rating Captured: {val}")
             else:
                 st.session_state.all_ratings[q] = st.selectbox("Rating (1-10)", [None, 1,2,3,4,5,6,7,8,9,10], key=f"r_t_{current_cat}_{i}")
             
@@ -160,8 +161,8 @@ elif not st.session_state.survey_complete:
         else:
             st.session_state.all_ratings[q] = "N/A"
 
-        # REASON
-        prompt = "Thank you for your response, please provide a brief explanation."
+        # 4b. Explanation / Reason Logic
+        prompt = "Provide a brief explanation for your choice."
         if st.session_state.survey_mode == "Voice Mode":
             st.write(prompt)
             aud_res = mic_recorder(start_prompt="⏺️ Record Reason", stop_prompt="⏹️ Stop", key=f"e_v_{current_cat}_{i}")
@@ -185,11 +186,11 @@ elif not st.session_state.survey_complete:
         else:
             st.error("⚠️ Please complete all ratings and explanations in this section.")
 
-# --- 5. FINAL SUBMISSION ---
+# --- 5. FINAL SUBMISSION (AIRTABLE SYNC) ---
 else:
-    st.success("🎉 Survey Complete!")
+    st.success("🎉 Assessment Complete!")
     
-    # Process scores for Radar Chart
+    # Generate Radar Chart
     scores = []
     for cat, qs in rangers_groups.items():
         cat_vals = [int(st.session_state.all_ratings[q]) for q in qs if st.session_state.all_ratings.get(q) not in [None, "N/A"]]
@@ -203,10 +204,45 @@ else:
         st.plotly_chart(fig)
 
     st.divider()
-    st.subheader("Final Step: Save to Team Dashboard")
-    st.write("Click the button below to synchronize your results with the Oakville Rangers database.")
+    st.subheader("Finalize & Save")
+    st.write("Click the button below to upload your data directly to the RANGERS coaching dashboard.")
 
-    # Airtable Submission Link
-    airtable_url = "https://airtable.com/invite/l?inviteId=invMxk61zgxvoXS1r&inviteToken=a1e05000257aaa6eaeeaf19454429377ceee59de58f57b0faee31175b1f68bda&utm_medium=email&utm_source=product_team&utm_content=transactional-alerts"
+    if st.button("🚀 Push Data to Coaching Staff", use_container_width=True):
+        # 1. Setup Airtable Payload
+        # NOTE: Make sure these field names match your Airtable columns exactly!
+        fields = {
+            "Full Name": st.session_state.profile['name'],
+            "Email": st.session_state.profile['email'],
+            "Organization": st.session_state.profile['organization'],
+            "Division": st.session_state.profile['age_league'],
+            "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
 
-    st.link_button("🚀 Submit to RANGERS Dashboard", airtable_url, use_container_width=True)
+        # Automatically map all 20+ questions to the payload
+        for i, (q, rat) in enumerate(st.session_state.all_ratings.items()):
+            fields[f"Q{i+1}_Score"] = str(rat)
+            fields[f"Q{i+1}_Reason"] = st.session_state.all_reasons.get(q, "")
+
+        # 2. Airtable API Config
+        AIR_TOKEN = "patTerc0AbJa1tJKp"
+        BASE_ID = "appGGtmK6Zh6fTaLo"
+        TABLE_NAME = "Table 1" 
+
+        url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
+        headers = {
+            "Authorization": f"Bearer {AIR_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        # 3. Execution
+        with st.spinner("Syncing with Cloud Database..."):
+            try:
+                response = requests.post(url, json={"fields": fields}, headers=headers)
+                
+                if response.status_code == 200:
+                    st.success("✅ Data saved permanently! Results are now visible to the coach.")
+                    st.balloons()
+                else:
+                    st.error(f"Airtable Sync Failed: {response.text}")
+            except Exception as e:
+                st.error(f"Connection Error: {e}")
