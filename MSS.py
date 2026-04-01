@@ -187,8 +187,10 @@ else:
     if scores:
         st.plotly_chart(px.line_polar(pd.DataFrame(scores), r='Score', theta='Category', line_close=True, range_r=[0,10]))
 
-    if st.button("🚀 Push Data to Coaching Staff", use_container_width=True):
-        # 1. Map fields to Airtable Columns
+   if st.button("🚀 Submit Data to Coaching Staff", use_container_width=True):
+        # 1. Create the payload for Airtable
+        # The key (left) MUST match your Airtable Column Name exactly.
+        # The value (right) pulls from your Streamlit session state.
         fields = {
             "Full Name": st.session_state.profile['name'],
             "Email": st.session_state.profile['email'],
@@ -199,50 +201,88 @@ else:
             "Age Level": st.session_state.profile['age_league'],
             "Submission Date": datetime.now().strftime("%Y-%m-%d"),
             
-            # RESPECT Mapping
+            # RESPECT
             "RESPECT_Score_1": int(st.session_state.all_ratings.get(rangers_groups["RESPECT"][0], 0)),
             "RESPECT_Reason_1": st.session_state.all_reasons.get(rangers_groups["RESPECT"][0], ""),
             "RESPECT_Score_2": int(st.session_state.all_ratings.get(rangers_groups["RESPECT"][1], 0)),
             "RESPECT_Reason_2": st.session_state.all_reasons.get(rangers_groups["RESPECT"][1], ""),
             
-            # ACCOUNTABILITY Mapping
+            # ACCOUNTABILITY
             "ACCOUNTABILITY_Score_1": int(st.session_state.all_ratings.get(rangers_groups["ACCOUNTABILITY"][0], 0)),
             "ACCOUNTABILITY_Reason_1": st.session_state.all_reasons.get(rangers_groups["ACCOUNTABILITY"][0], ""),
             "ACCOUNTABILITY_Score_2": int(st.session_state.all_ratings.get(rangers_groups["ACCOUNTABILITY"][1], 0)),
             "ACCOUNTABILITY_Reason_2": st.session_state.all_reasons.get(rangers_groups["ACCOUNTABILITY"][1], ""),
-            
+
+            # NO EXCUSES
+            "NO_EXCUSES_Score_1": int(st.session_state.all_ratings.get(rangers_groups["NO EXCUSES"][0], 0)),
+            "NO_EXCUSES_Reason_1": st.session_state.all_reasons.get(rangers_groups["NO EXCUSES"][0], ""),
+            "NO_EXCUSES_Score_2": int(st.session_state.all_ratings.get(rangers_groups["NO EXCUSES"][1], 0)),
+            "NO_EXCUSES_Reason_2": st.session_state.all_reasons.get(rangers_groups["NO EXCUSES"][1], ""),
+
+            # GROWTH
+            "GROWTH_Score_1": int(st.session_state.all_ratings.get(rangers_groups["GROWTH"][0], 0)),
+            "GROWTH_Reason_1": st.session_state.all_reasons.get(rangers_groups["GROWTH"][0], ""),
+            "GROWTH_Score_2": int(st.session_state.all_ratings.get(rangers_groups["GROWTH"][1], 0)),
+            "GROWTH_Reason_2": st.session_state.all_reasons.get(rangers_groups["GROWTH"][1], ""),
+
+            # EFFORT
+            "EFFORT_Score_1": int(st.session_state.all_ratings.get(rangers_groups["EFFORT"][0], 0)),
+            "EFFORT_Reason_1": st.session_state.all_reasons.get(rangers_groups["EFFORT"][0], ""),
+            "EFFORT_Score_2": int(st.session_state.all_ratings.get(rangers_groups["EFFORT"][1], 0)),
+            "EFFORT_Reason_2": st.session_state.all_reasons.get(rangers_groups["EFFORT"][1], ""),
+
+            # RESPONSIBILITY
+            "RESPONSIBILITY_Score_1": int(st.session_state.all_ratings.get(rangers_groups["RESPONSIBILITY"][0], 0)),
+            "RESPONSIBILITY_Reason_1": st.session_state.all_reasons.get(rangers_groups["RESPONSIBILITY"][0], ""),
+            "RESPONSIBILITY_Score_2": int(st.session_state.all_ratings.get(rangers_groups["RESPONSIBILITY"][1], 0)),
+            "RESPONSIBILITY_Reason_2": st.session_state.all_reasons.get(rangers_groups["RESPONSIBILITY"][1], ""),
+            "RESPONSIBILITY_Score_3": int(st.session_state.all_ratings.get(rangers_groups["RESPONSIBILITY"][2], 0)),
+            "RESPONSIBILITY_Reason_3": st.session_state.all_reasons.get(rangers_groups["RESPONSIBILITY"][2], ""),
+            "RESPONSIBILITY_Score_4": int(st.session_state.all_ratings.get(rangers_groups["RESPONSIBILITY"][3], 0)),
+            "RESPONSIBILITY_Reason_4": st.session_state.all_reasons.get(rangers_groups["RESPONSIBILITY"][3], ""),
+
+            # STANDARDS
+            "STANDARDS_Score_1": int(st.session_state.all_ratings.get(rangers_groups["STANDARDS"][0], 0)),
+            "STANDARDS_Reason_1": st.session_state.all_reasons.get(rangers_groups["STANDARDS"][0], ""),
+            "STANDARDS_Score_2": int(st.session_state.all_ratings.get(rangers_groups["STANDARDS"][1], 0)),
+            "STANDARDS_Reason_2": st.session_state.all_reasons.get(rangers_groups["STANDARDS"][1], ""),
+            "STANDARDS_Score_3": int(st.session_state.all_ratings.get(rangers_groups["STANDARDS"][2], 0)),
+            "STANDARDS_Reason_3": st.session_state.all_reasons.get(rangers_groups["STANDARDS"][2], ""),
+            "STANDARDS_Score_4": int(st.session_state.all_ratings.get(rangers_groups["STANDARDS"][3], 0)),
+            "STANDARDS_Reason_4": st.session_state.all_reasons.get(rangers_groups["STANDARDS"][3], ""),
+
+            # LEADERSHIP
+            "LEADERSHIP_Score_1": int(st.session_state.all_ratings.get(rangers_groups["LEADERSHIP"][0], 0)),
+            "LEADERSHIP_Reason_1": st.session_state.all_reasons.get(rangers_groups["LEADERSHIP"][0], ""),
+            "LEADERSHIP_Score_2": int(st.session_state.all_ratings.get(rangers_groups["LEADERSHIP"][1], 0)),
+            "LEADERSHIP_Reason_2": st.session_state.all_reasons.get(rangers_groups["LEADERSHIP"][1], ""),
+
             # REFLECTION
             "REFLECTION_Best_Representation": st.session_state.all_reasons.get(rangers_groups["REFLECTION"][0], ""),
             "REFLECTION_Growth_Opportunity": st.session_state.all_reasons.get(rangers_groups["REFLECTION"][1], "")
         }
 
-        # 2. Airtable API Configuration
-        
-        # --- SECURE CONFIGURATION ---
+        # 2. Airtable API Configuration (Pulling from SECRETS for safety)
         try:
             AIR_TOKEN = st.secrets["AIR_TOKEN"]
             BASE_ID = st.secrets["BASE_ID"]
             TABLE_NAME = st.secrets["TABLE_NAME"]
-        except KeyError:
-            st.error("Secrets not configured in Streamlit Cloud!")
+        except:
+            st.error("Secrets not configured!")
             st.stop()
 
         url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
-        headers = {
-            "Authorization": f"Bearer {AIR_TOKEN.strip()}",
-            "Content-Type": "application/json"
-        }
-        
+        headers = {"Authorization": f"Bearer {AIR_TOKEN.strip()}", "Content-Type": "application/json"}
 
-        with st.spinner("Syncing with RANGERS Cloud Database..."):
+        with st.spinner("Syncing data to RANGERS Database..."):
             try:
                 response = requests.post(url, json={"fields": fields}, headers=headers)
-                
                 if response.status_code == 200:
-                    st.success("✅ Permanent Sync Successful! Data is live.")
+                    st.success("✅ Assessment Saved! Data is live for the coaching staff.")
                     st.balloons()
                 else:
-                    # This will show you exactly why it failed if it does
                     st.error(f"Sync Failed: {response.text}")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
+
+        
