@@ -216,21 +216,33 @@ else:
             "REFLECTION_Growth_Opportunity": st.session_state.all_reasons.get(rangers_groups["REFLECTION"][1], "")
         }
 
-        # 2. Airtable API Push
-        AIR_TOKEN = "patTerc0AbJa1tJKp"
-        BASE_ID = "appGGtmK6Zh6fTaLo"
-        TABLE_NAME = "Table 1"
+        # 2. Airtable API Configuration
+        
+        # --- SECURE CONFIGURATION ---
+        try:
+            AIR_TOKEN = st.secrets["AIR_TOKEN"]
+            BASE_ID = st.secrets["BASE_ID"]
+            TABLE_NAME = st.secrets["TABLE_NAME"]
+        except KeyError:
+            st.error("Secrets not configured in Streamlit Cloud!")
+            st.stop()
 
         url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
-        headers = {"Authorization": f"Bearer {AIR_TOKEN}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {AIR_TOKEN.strip()}",
+            "Content-Type": "application/json"
+        }
+        
 
-        with st.spinner("Syncing..."):
+        with st.spinner("Syncing with RANGERS Cloud Database..."):
             try:
                 response = requests.post(url, json={"fields": fields}, headers=headers)
+                
                 if response.status_code == 200:
-                    st.success("✅ Permanent Sync Successful!")
+                    st.success("✅ Permanent Sync Successful! Data is live.")
                     st.balloons()
                 else:
-                    st.error(f"Error: {response.text}")
+                    # This will show you exactly why it failed if it does
+                    st.error(f"Sync Failed: {response.text}")
             except Exception as e:
-                st.error(f"Failed: {e}")
+                st.error(f"Connection Error: {e}")
