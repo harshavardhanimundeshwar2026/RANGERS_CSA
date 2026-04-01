@@ -284,5 +284,8 @@ else:
                     st.error(f"Sync Failed: {response.text}")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
+                
+            except Exception as e:
+                st.error(f"Connection Error: {e}")
 
         
