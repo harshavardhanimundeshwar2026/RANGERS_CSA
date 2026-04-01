@@ -4,4 +4,4 @@ plotly
 openai-whisper
 gTTS
 streamlit-mic-recorder
-st-gsheets-connection
+
