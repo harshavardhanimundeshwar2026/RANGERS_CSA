@@ -93,7 +93,7 @@ if 'group_index' not in st.session_state:
     })
 
 st.set_page_config(page_title="CSA Sport Performance", layout="wide")
-st.title("🎙️ RANGERS Standard Evaluation Survey")
+st.title("🎙️ RANGERS STANDARD Evaluation Survey")
 
 # --- 3. HOMEPAGE & PROFILE ---
 if not st.session_state.intro_done:
